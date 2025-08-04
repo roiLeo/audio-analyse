@@ -147,12 +147,10 @@ const onPlayPause = () => {
 const onCueDown = () => {
   if (!audioContext.value) return
 
-  // Always jump to cue point and play while held
   audioContext.value.seekTo(cuePoint.value)
   audioContext.value.play()
   isPlaying.value = true
 
-  // If paused, set cue point to current position before playing
   if (!isPlaying.value) {
     cuePoint.value = audioContext.value.getCurrentTime()
   }
