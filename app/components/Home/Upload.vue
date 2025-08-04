@@ -12,32 +12,104 @@
     />
 
     <div
+      v-show="file"
       id="waveform"
       class="mt-2"
     />
     <div
       v-if="file"
-      class="mt-4"
+      class="mt-4 space-y-4"
     >
-      <h3 class="text-lg font-semibold">
-        Uploaded File:
+      <h3 class="text-lg font-semibold mb-4">
+        Uploaded File: <span class="text-sm">{{ file.name }} ({{ (file.size / 1024).toFixed(2) }} KB)</span>
       </h3>
-      <p>{{ file.name }} ({{ (file.size / 1024).toFixed(2) }} KB)</p>
-      <p>BPM: {{ bpm }}</p>
-      <p>Current time: {{ formatTime(currentTime) }}</p>
-      <p>Total duration: {{ formatTime(duration) }}</p>
 
-      <p>Status: {{ isPlaying ? 'Playing' : 'Paused' }}</p>
-      <div class="progress-bar">
-        <div
-          class="progress"
-          :style="{ width: `${(currentTime / duration) * 100}%` }"
-        />
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <img
+            :src="metadata?.coverImage?.dataUrl"
+            :alt="file.name"
+          >
+        </div>
+        <dl class="py-4 space-y-2">
+          <div>
+            <dt class="text-muted text-xs">
+              Title
+            </dt>
+            <dd>{{ metadata?.title }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              Artist
+            </dt>
+            <dd>{{ metadata?.artist }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              Year
+            </dt>
+            <dd>{{ metadata?.year }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              Genre
+            </dt>
+            <dd>{{ metadata?.genre?.join(', ') }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              BPM
+            </dt>
+            <dd>{{ bpm }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              Total duration
+            </dt>
+            <dd>{{ formatTime(duration) }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              Current time
+            </dt>
+            <dd>{{ formatTime(currentTime) }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
+              Status
+            </dt>
+            <dd>{{ isPlaying ? 'Playing' : 'Paused' }}</dd>
+          </div>
+        </dl>
       </div>
 
-      <UButton @click="onPlayPause">
-        {{ isPlaying ? 'Pause' : 'Play' }}
-      </UButton>
+      <div class="flex items-center gap-4">
+        <UButton
+          class="rounded-full"
+          size="xl"
+          color="warning"
+          @mousedown="onCueDown"
+          @mouseup="onCueUp"
+          @mouseleave="onCueUp"
+        >
+          CUE
+        </UButton>
+        <UButton
+          :icon="isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+          class="rounded-full"
+          size="xl"
+          @click="onPlayPause"
+        >
+          {{ isPlaying ? 'Pause' : 'Play' }}
+        </UButton>
+      </div>
     </div>
   </div>
 </template>
@@ -47,26 +119,52 @@ import WaveSurfer from 'wavesurfer.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import Minimap from 'wavesurfer.js/dist/plugins/minimap.esm.js'
 import Hover from 'wavesurfer.js/dist/plugins/hover.esm.js'
+import type { MP3Metadata } from '~/types'
 
 const file = ref<File | null>(null)
 const audioContext = ref<WaveSurfer | any>()
 const bpm = ref<number | null>(null)
-const bpmDetective = ref<any>(null)
+const bpmDetective = ref<any | null>(null)
 const isPlaying = ref(false)
 const duration = ref(0)
+const cuePoint = ref(0)
 const currentTime = ref(0)
+const metadata = ref<MP3Metadata | null>(null)
 
 const formatTime = (seconds: number) => [seconds / 60, seconds % 60].map(v => `0${Math.floor(v)}`.slice(-2)).join(':')
 
 const onPlayPause = () => {
-  if (audioContext.value) {
-    if (isPlaying.value) {
-      audioContext.value.pause()
-    }
-    else {
-      audioContext.value.play()
-    }
+  if (!audioContext.value) return
+
+  if (isPlaying.value) {
+    audioContext.value.pause()
   }
+  else {
+    audioContext.value.play()
+  }
+}
+
+const onCueDown = () => {
+  if (!audioContext.value) return
+
+  // Always jump to cue point and play while held
+  audioContext.value.seekTo(cuePoint.value)
+  audioContext.value.play()
+  isPlaying.value = true
+
+  // If paused, set cue point to current position before playing
+  if (!isPlaying.value) {
+    cuePoint.value = audioContext.value.getCurrentTime()
+  }
+}
+
+const onCueUp = () => {
+  if (!audioContext.value) return
+
+  audioContext.value.pause()
+  audioContext.value.seekTo(cuePoint.value)
+  isPlaying.value = false
+  currentTime.value = cuePoint.value
 }
 
 onMounted(() => {
@@ -110,10 +208,6 @@ const initializeWaveSurfer = () => {
       }),
     ],
   })
-  audioContext.value.on('click', () => {
-    isPlaying.value = true
-    audioContext.value.play()
-  })
   audioContext.value.on('ready', () => {
     duration.value = audioContext.value.getDuration()
   })
@@ -128,8 +222,17 @@ const initializeWaveSurfer = () => {
   })
 }
 
-watch(file, (newFile) => {
+watch(file, async (newFile) => {
   if (newFile) {
+    try {
+      metadata.value = await extractMetadata(newFile)
+      console.log('Extracted metadata:', metadata.value)
+    }
+    catch (error) {
+      console.error('Error extracting metadata:', error)
+      metadata.value = null
+    }
+
     const reader = new FileReader()
     reader.onload = (e) => {
       audioContext.value.loadBlob(new Blob([e.target?.result as ArrayBuffer]))
