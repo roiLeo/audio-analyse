@@ -1,6 +1,7 @@
 <template>
   <div class="my-6">
     <UFileUpload
+      v-if="!file"
       v-model="file"
       accept="audio/*"
       :max-size="10 * 1024 * 1024"
@@ -12,16 +13,19 @@
     />
 
     <div
-      v-show="file"
-      id="waveform"
-      class="mt-2"
-    />
-    <div
       v-if="file"
       class="mt-4 space-y-4"
     >
       <h3 class="text-lg font-semibold mb-4">
         Uploaded File: <span class="text-sm">{{ file.name }} ({{ (file.size / 1024).toFixed(2) }} KB)</span>
+        <UButton
+          size="xs"
+          variant="subtle"
+          color="neutral"
+          icon="i-lucide-circle-x"
+          class="rounded-full"
+          @click="file = null"
+        />
       </h3>
 
       <div class="grid sm:grid-cols-2 gap-4">
@@ -90,6 +94,13 @@
         </dl>
       </div>
 
+    </div>
+
+    <div v-show="file">
+      <div
+        id="waveform"
+        class="my-4"
+      />
       <div class="flex items-center gap-4">
         <UButton
           class="rounded-full"
