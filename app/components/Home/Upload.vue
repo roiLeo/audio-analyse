@@ -73,6 +73,25 @@
 
           <div>
             <dt class="text-muted text-xs">
+              Key
+            </dt>
+            <dd>
+              {{ songKey }}
+                <span
+                  v-if="camelotKey !== '-'"
+                  class="ml-2 px-2 py-1 rounded-lg font-semibold"
+                  :style="{
+                    background: camelotColor,
+                    color: '#181717',
+                  }"
+                >
+                  {{ camelotKey }}
+                </span>
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-muted text-xs">
               Total duration
             </dt>
             <dd>{{ formatTime(duration) }}</dd>
@@ -126,11 +145,26 @@
 </template>
 
 <script lang="ts" setup>
+import Meyda from 'meyda'
 import WaveSurfer from 'wavesurfer.js'
 import ZoomPlugin from 'wavesurfer.js/dist/plugins/zoom.esm.js'
 import Minimap from 'wavesurfer.js/dist/plugins/minimap.esm.js'
 import Hover from 'wavesurfer.js/dist/plugins/hover.esm.js'
 import type { MP3Metadata } from '~/types'
+
+const camelotMap: Record<string, string> = {
+  'C': '8B',  'C#': '3B',  'D': '10B', 'D#': '5B',  'E': '12B', 'F': '7B',
+  'F#': '2B', 'G': '9B',   'G#': '4B', 'A': '11B',  'A#': '6B', 'B': '1B',
+}
+
+const camelotColors: Record<string, string> = {
+  '1A': '#56f1da',  '2A': '#7df2aa',  '3A': '#aef589',  '4A': '#e8daa1',
+  '1B': '#01edca',  '2B': '#3cee81',  '3B': '#86f24f',  '4B': '#dfca73',
+  '5A': '#febfa7',  '6A': '#fdafb7',  '7A': '#fdaacc',  '8A': '#f2abe4',
+  '5B': '#ffa07c',  '6B': '#ff8894',  '7B': '#ff81b4',  '8B': '#ee82d9',
+  '9A': '#ddb4fd',  '10A': '#becdfd', '11A': '#8ee4f9', '12A': '#55f0f0',
+  '9B': '#ce8fff',  '10B': '#9fb6ff', '11B': '#56d9f9', '12B': '#00ebeb',
+}
 
 const file = ref<File | null>(null)
 const audioContext = ref<WaveSurfer | any>()
@@ -141,6 +175,10 @@ const duration = ref(0)
 const cuePoint = ref(0)
 const currentTime = ref(0)
 const metadata = ref<MP3Metadata | null>(null)
+const songKey = ref<string | null>(null)
+
+const camelotKey = computed(() => songKey.value ? camelotMap[songKey.value] ?? '-' : '-')
+const camelotColor = computed(() => camelotColors[camelotKey.value] ?? '#ccc')
 
 const formatTime = (seconds: number) => [seconds / 60, seconds % 60].map(v => `0${Math.floor(v)}`.slice(-2)).join(':')
 
@@ -176,6 +214,23 @@ const onCueUp = () => {
   currentTime.value = cuePoint.value
 }
 
+const detectKey = async (audioBuffer: AudioBuffer) => {
+  const channelData = audioBuffer.getChannelData(0)
+  const windowSize = 2048
+  let chromaSum = Array(12).fill(0)
+  for (let i = 0; i < channelData.length - windowSize; i += windowSize) {
+    const frame = channelData.slice(i, i + windowSize)
+    const features = Meyda.extract('chroma', frame)
+    const chroma = Array.isArray(features) ? features : (features && (features as any).chroma)
+    if (Array.isArray(chroma)) {
+      chroma.forEach((v, idx) => (chromaSum[idx] += v))
+    }
+  }
+  const maxIdx = chromaSum.indexOf(Math.max(...chromaSum))
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  songKey.value = notes[maxIdx] ?? null
+}
+
 onMounted(() => {
   if (!audioContext.value) {
     initializeWaveSurfer()
@@ -186,6 +241,7 @@ onMounted(() => {
     })
   }
 })
+
 const initializeWaveSurfer = () => {
   if (audioContext.value) {
     audioContext.value.destroy()
@@ -246,11 +302,12 @@ watch(file, async (newFile) => {
     reader.onload = (e) => {
       audioContext.value.loadBlob(new Blob([e.target?.result as ArrayBuffer]))
 
-      // Run BPM detection
+      // Run BPM & Key detection
       if (typeof window !== 'undefined' && bpmDetective.value) {
         const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
         audioContext.decodeAudioData(e.target?.result as ArrayBuffer, (buffer) => {
           bpm.value = bpmDetective.value(buffer)
+          detectKey(buffer)
           console.log(`Detected BPM: ${bpm.value}`)
         })
 
