@@ -77,16 +77,16 @@
             </dt>
             <dd>
               {{ songKey }}
-                <span
-                  v-if="camelotKey !== '-'"
-                  class="ml-2 px-2 py-1 rounded-lg font-semibold"
-                  :style="{
-                    background: camelotColor,
-                    color: '#181717',
-                  }"
-                >
-                  {{ camelotKey }}
-                </span>
+              <span
+                v-if="camelotKey !== '-'"
+                class="ml-2 px-2 py-1 rounded-lg font-semibold"
+                :style="{
+                  background: camelotColor,
+                  color: '#181717',
+                }"
+              >
+                {{ camelotKey }}
+              </span>
             </dd>
           </div>
 
@@ -112,7 +112,6 @@
           </div>
         </dl>
       </div>
-
     </div>
 
     <div v-show="file">
@@ -153,23 +152,23 @@ import Hover from 'wavesurfer.js/dist/plugins/hover.esm.js'
 import type { MP3Metadata } from '~/types'
 
 const camelotMap: Record<string, string> = {
-  'C': '8B',  'C#': '3B',  'D': '10B', 'D#': '5B',  'E': '12B', 'F': '7B',
-  'F#': '2B', 'G': '9B',   'G#': '4B', 'A': '11B',  'A#': '6B', 'B': '1B',
+  'C': '8B', 'C#': '3B', 'D': '10B', 'D#': '5B', 'E': '12B', 'F': '7B',
+  'F#': '2B', 'G': '9B', 'G#': '4B', 'A': '11B', 'A#': '6B', 'B': '1B',
 }
 
 const camelotColors: Record<string, string> = {
-  '1A': '#56f1da',  '2A': '#7df2aa',  '3A': '#aef589',  '4A': '#e8daa1',
-  '1B': '#01edca',  '2B': '#3cee81',  '3B': '#86f24f',  '4B': '#dfca73',
-  '5A': '#febfa7',  '6A': '#fdafb7',  '7A': '#fdaacc',  '8A': '#f2abe4',
-  '5B': '#ffa07c',  '6B': '#ff8894',  '7B': '#ff81b4',  '8B': '#ee82d9',
-  '9A': '#ddb4fd',  '10A': '#becdfd', '11A': '#8ee4f9', '12A': '#55f0f0',
-  '9B': '#ce8fff',  '10B': '#9fb6ff', '11B': '#56d9f9', '12B': '#00ebeb',
+  '1A': '#56f1da', '2A': '#7df2aa', '3A': '#aef589', '4A': '#e8daa1',
+  '1B': '#01edca', '2B': '#3cee81', '3B': '#86f24f', '4B': '#dfca73',
+  '5A': '#febfa7', '6A': '#fdafb7', '7A': '#fdaacc', '8A': '#f2abe4',
+  '5B': '#ffa07c', '6B': '#ff8894', '7B': '#ff81b4', '8B': '#ee82d9',
+  '9A': '#ddb4fd', '10A': '#becdfd', '11A': '#8ee4f9', '12A': '#55f0f0',
+  '9B': '#ce8fff', '10B': '#9fb6ff', '11B': '#56d9f9', '12B': '#00ebeb',
 }
 
 const file = ref<File | null>(null)
-const audioContext = ref<WaveSurfer | any>()
+const audioContext = ref<WaveSurfer>()
 const bpm = ref<number | null>(null)
-const bpmDetective = ref<any | null>(null)
+const bpmDetective = ref<unknown | null>(null)
 const isPlaying = ref(false)
 const duration = ref(0)
 const cuePoint = ref(0)
@@ -217,11 +216,11 @@ const onCueUp = () => {
 const detectKey = async (audioBuffer: AudioBuffer) => {
   const channelData = audioBuffer.getChannelData(0)
   const windowSize = 2048
-  let chromaSum = Array(12).fill(0)
+  const chromaSum = Array(12).fill(0)
   for (let i = 0; i < channelData.length - windowSize; i += windowSize) {
     const frame = channelData.slice(i, i + windowSize)
     const features = Meyda.extract('chroma', frame)
-    const chroma = Array.isArray(features) ? features : (features && (features as any).chroma)
+    const chroma = Array.isArray(features) ? features : (features && (features as unknown).chroma)
     if (Array.isArray(chroma)) {
       chroma.forEach((v, idx) => (chromaSum[idx] += v))
     }
@@ -246,7 +245,7 @@ const initializeWaveSurfer = () => {
   if (audioContext.value) {
     audioContext.value.destroy()
   }
-  audioContext.value = null
+  audioContext.value = undefined
 
   audioContext.value = WaveSurfer.create({
     container: '#waveform',
@@ -274,10 +273,10 @@ const initializeWaveSurfer = () => {
     ],
   })
   audioContext.value.on('ready', () => {
-    duration.value = audioContext.value.getDuration()
+    duration.value = audioContext.value?.getDuration() ?? 0
   })
   audioContext.value.on('audioprocess', () => {
-    currentTime.value = audioContext.value.getCurrentTime()
+    currentTime.value = audioContext.value?.getCurrentTime() ?? 0
   })
   audioContext.value.on('pause', () => {
     isPlaying.value = false
@@ -300,7 +299,7 @@ watch(file, async (newFile) => {
 
     const reader = new FileReader()
     reader.onload = (e) => {
-      audioContext.value.loadBlob(new Blob([e.target?.result as ArrayBuffer]))
+      audioContext.value?.loadBlob(new Blob([e.target?.result as ArrayBuffer]))
 
       // Run BPM & Key detection
       if (typeof window !== 'undefined' && bpmDetective.value) {

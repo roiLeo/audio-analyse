@@ -5,7 +5,7 @@ const arrayBufferToBase64 = (buffer: Uint8Array): string => {
   let binary = ''
   const len = buffer.byteLength
   for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(buffer[i])
+    binary += String.fromCharCode(buffer[i] ?? 0)
   }
   return btoa(binary)
 }
@@ -24,20 +24,22 @@ export default async (file: File): Promise<MP3Metadata> => {
     if (parsedMetadata.common.picture && parsedMetadata.common.picture.length > 0) {
       const picture = parsedMetadata.common.picture[0]
 
-      // Convert Buffer to Uint8Array if needed
-      const imageData = picture.data instanceof Uint8Array
-        ? picture.data
-        : new Uint8Array(picture.data)
+      if (picture && picture.data) {
+        // Convert Buffer to Uint8Array if needed
+        const imageData = picture.data instanceof Uint8Array
+          ? picture.data
+          : new Uint8Array(picture.data)
 
-      // Create data URL for display
-      const base64 = arrayBufferToBase64(imageData)
-      const dataUrl = `data:${picture.format};base64,${base64}`
+        // Create data URL for display
+        const base64 = arrayBufferToBase64(imageData)
+        const dataUrl = `data:${picture.format};base64,${base64}`
 
-      coverImage = {
-        format: picture.format,
-        data: imageData,
-        description: picture.description,
-        dataUrl: dataUrl,
+        coverImage = {
+          format: picture.format,
+          data: imageData,
+          description: picture.description,
+          dataUrl: dataUrl,
+        }
       }
     }
 
@@ -47,7 +49,7 @@ export default async (file: File): Promise<MP3Metadata> => {
       artist: parsedMetadata.common.artist,
       year: parsedMetadata.common.year,
       genre: parsedMetadata.common.genre,
-      trackNumber: parsedMetadata.common.track?.no,
+      trackNumber: parsedMetadata.common.track?.no ?? undefined,
       coverImage,
     }
   }
