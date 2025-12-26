@@ -1,9 +1,7 @@
 <template>
-  <header class="sticky top-0 inset-x-0 flex flex-wrap md:justify-start md:flex-nowrap z-50 w-full text-sm">
-    <nav class="gap-2 mt-4 relative py-2.5 flex items-center justify-between px-4 ml-auto mr-8 bg-muted/80 backdrop-blur-sm rounded-full border border-muted/50 shadow-lg shadow-neutral-950/5">
-      <div class="flex">
-        <ColorModeButton />
-      </div>
-    </nav>
+  <header class="bg-default/75 backdrop-blur border-b border-default h-(--ui-header-height) sticky top-0 z-50">
+    <div class="w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8 flex justify-end items-center gap-3 h-full">
+      <UColorModeButton />
+    </div>
   </header>
 </template>
