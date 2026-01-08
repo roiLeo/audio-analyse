@@ -45,8 +45,6 @@
 </template>
 
 <script lang="ts" setup>
-import { useAudioPlayer } from '~/composables/useAudioPlayer'
-
 const {
   file,
   bpm,

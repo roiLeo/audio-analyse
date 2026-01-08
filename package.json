@@ -17,7 +17,7 @@
     "@nuxt/ui": "4.3.0",
     "bpm-detective": "^2.0.5",
     "meyda": "^5.6.3",
-    "music-metadata": "^11.10.4",
+    "music-metadata": "^11.10.5",
     "nuxt": "^4.2.2",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4",

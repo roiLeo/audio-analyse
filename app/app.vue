@@ -3,11 +3,8 @@
     <div class="flex flex-col min-h-screen">
       <DefaultNavbar />
 
-      <div class="flex-1 mx-auto max-w-screen-xl overflow-x-visible py-8 md:px-8 w-full">
+      <div class="flex-1 mx-auto max-w-7xl overflow-x-visible py-8 md:px-8 w-full">
         <UContainer class="w-full">
-          <!-- PROFILE AVATAR -->
-          <!-- <HomeProfile /> -->
-
           <!-- FILE UPLOAD -->
           <HomeUpload />
         </UContainer>
